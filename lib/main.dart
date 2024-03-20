@@ -1,76 +1,51 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
-import 'package:camera/camera.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_notice_board_app/firebase_options.dart';
+import 'package:flutter_notice_board_app/screen/camera_screen.dart';
 import 'package:flutter_notice_board_app/screen/notice_board_screen.dart';
 import 'package:flutter_notice_board_app/screen/pictures_screen.dart';
+import 'package:flutter_notice_board_app/services/notification_service.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-
-import 'package:flutter_notice_board_app/services/notification_service.dart';
-
-@pragma('vm:entry-point')
-Future<void> _backgroundHandler(RemoteMessage message) async {
-  debugPrint("Handling in Background: ${message.messageId}");
-}
-
-Future<void> main() async {
+void main() async {
+  // Ensure that Flutter bindings are initialized before running the app
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase app with default options
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Retrieve the FCM token for the device
   final fcmToken = await FirebaseMessaging.instance.getToken();
   print("------------------------------------------------------------");
   print(fcmToken);
   print("------------------------------------------------------------");
 
+  // Register a background message handler for Firebase Messaging
   FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
 
+  // Initialize notification service for handling push notifications
   final notificationService = NotificationService();
 
+  // Request permission for receiving notifications
   notificationService.requestNotificationPermission();
+
+  // Initialize Firebase for handling notifications
   notificationService.firebaseInit();
 
+  // Run the app with MyApp widget as the root widget
   runApp(const MyApp());
 }
 
-final GoRouter _router = GoRouter(
-  routes: <RouteBase>[
-    GoRoute(
-      path: '/',
-      builder: (BuildContext context, GoRouterState state) {
-        return const CameraPage();
-      },
-      routes: <RouteBase>[
-        GoRoute(
-          path: 'pictures',
-          builder: (BuildContext context, GoRouterState state) {
-            return const PicturesScreen(
-              base64ImageList: [],
-            );
-          },
-        ),
-        GoRoute(
-          path: 'notice',
-          builder: (BuildContext context, GoRouterState state) {
-            return const NoticeBoardScreen(base64ImageList: []);
-          },
-        ),
-      ],
-    ),
-  ],
-);
-
+// MyApp widget is the root widget of the app
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // MaterialApp.router is used for routing with GoRouter
     return MaterialApp.router(
       title: 'Flutter Camera App',
       themeMode: ThemeMode.dark,
@@ -81,257 +56,33 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class CameraPage extends StatefulWidget {
-  const CameraPage({super.key});
-
-  @override
-  CameraPageState createState() => CameraPageState();
+// Background message handler for Firebase Messaging
+Future<void> _backgroundHandler(RemoteMessage message) async {
+  debugPrint("Handling in Background: ${message.messageId}");
 }
 
-class CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
-  CameraController? _controller;
-  bool _isCameraInitialized = false;
-  late final List<CameraDescription> _cameras;
-  List<String> _base64ImageList = [];
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    initCamera();
-  }
-
-  Future<void> initCamera() async {
-    _cameras = await availableCameras();
-    // Initialize the camera with the first camera in the list
-    await onNewCameraSelected(_cameras.first);
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // App state changed before we got the chance to initialize.
-    final CameraController? cameraController = _controller;
-
-    // App state changed before we got the chance to initialize.
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      return;
-    }
-
-    if (state == AppLifecycleState.inactive) {
-      // Free up memory when camera not active
-      cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
-      // Reinitialize the camera with same properties
-      onNewCameraSelected(cameraController.description);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  Future<XFile?> capturePhoto() async {
-    final CameraController? cameraController = _controller;
-    if (cameraController!.value.isTakingPicture) {
-      // A capture is already pending, do nothing.
-      return null;
-    }
-    try {
-      await cameraController.setFlashMode(FlashMode.off);
-      XFile file = await cameraController.takePicture();
-      return file;
-    } on CameraException catch (e) {
-      debugPrint('Error occured while taking picture: $e');
-      return null;
-    }
-  }
-
-  Future<XFile?> captureVideo() async {
-    final CameraController? cameraController = _controller;
-    try {
-      setState(() {
-      });
-      await cameraController?.startVideoRecording();
-      await Future.delayed(const Duration(seconds: 5));
-      final video = await cameraController?.stopVideoRecording();
-      setState(() {
-      });
-      return video;
-    } on CameraException catch (e) {
-      debugPrint('Error occured while taking picture: $e');
-      return null;
-    }
-  }
-
-  void _onTakePhotoPressed(BuildContext context) async {
-    final xFile = await capturePhoto();
-
-    if (xFile != null) {
-      final imageBytes = await xFile.readAsBytes();
-
-      final base64Image = await compute(base64Encode, imageBytes);
-
-      setState(() {
-        _base64ImageList.add(base64Image);
-      });
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PreviewPage(
-            base64Image: base64Image,
-          ),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isCameraInitialized) {
-      return Scaffold(
-        body: Stack(
-          children: [
-            CameraPreview(_controller!),
-            Positioned(
-              bottom: 20.0,
-              left: MediaQuery.of(context).size.width / 2 - 50,
-              child: ElevatedButton(
-                onPressed: () => _onTakePhotoPressed(context),
-                style: ElevatedButton.styleFrom(
-                  shape: const CircleBorder(),
-                  backgroundColor: Colors.white,
-                ),
-                child: const Icon(
-                  Icons.camera_alt,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-          ],
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.camera),
-              label: 'Camera',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.photo),
-              label: 'Pictures',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.note),
-              label: 'Notice',
-            ),
-          ],
-          currentIndex: 0,
-          selectedItemColor: Colors.blue,
-          unselectedItemColor: Colors.grey,
-          onTap: (index) {
-            if (index == 0) {
-              Navigator.pushNamed(context, '/');
-            } else if (index == 1) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PicturesScreen(
-                    base64ImageList: _base64ImageList,
-                  ),
-                ),
-              );
-            } else if (index == 2) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => NoticeBoardScreen(
-                    base64ImageList: _base64ImageList,
-                  ),
-                ),
-              );
-            }
+// Router configuration for GoRouter
+final GoRouter _router = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) {
+        return const CameraScreen(); // Initial route: CameraScreen
+      },
+      routes: [
+        GoRoute(
+          path: 'pictures',
+          builder: (context, state) {
+            return const PicturesScreen(base64ImageList: []); // Nested route: PicturesScreen
           },
         ),
-      );
-    } else {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-  }
-
-  Future<void> onNewCameraSelected(CameraDescription description) async {
-    final previousCameraController = _controller;
-
-    // Instantiating the camera controller
-    final CameraController cameraController = CameraController(
-      description,
-      ResolutionPreset.high,
-      imageFormatGroup: ImageFormatGroup.jpeg,
-    );
-
-    // Initialize controller
-    try {
-      await cameraController.initialize();
-    } on CameraException catch (e) {
-      debugPrint('Error initializing camera: $e');
-    }
-    // Dispose the previous controller
-    await previousCameraController?.dispose();
-
-    // Replace with the new controller
-    if (mounted) {
-      setState(() {
-        _controller = cameraController;
-      });
-    }
-
-    // Update UI if controller updated
-    cameraController.addListener(() {
-      if (mounted) setState(() {});
-    });
-
-    // Update the Boolean
-    if (mounted) {
-      setState(() {
-        _isCameraInitialized = _controller!.value.isInitialized;
-      });
-    }
-  }
-}
-
-class PreviewPage extends StatefulWidget {
-  final String? base64Image;
-
-  const PreviewPage({Key? key, this.base64Image}) : super(key: key);
-
-  @override
-  _PreviewPageState createState() => _PreviewPageState();
-}
-
-class _PreviewPageState extends State<PreviewPage> {
-  late ImageProvider imageProvider;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.base64Image != null) {
-      final Uint8List decodedBytes = base64Decode(widget.base64Image!);
-      imageProvider = MemoryImage(decodedBytes);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: widget.base64Image != null
-            ? Image(image: imageProvider, fit: BoxFit.cover)
-            : Container(),
-      ),
-    );
-  }
-}
+        GoRoute(
+          path: 'notice',
+          builder: (context, state) {
+            return const NoticeBoardScreen(base64ImageList: []); // Nested route: NoticeBoardScreen
+          },
+        ),
+      ],
+    ),
+  ],
+);

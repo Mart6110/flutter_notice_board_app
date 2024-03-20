@@ -4,10 +4,15 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+// This class handles notification-related functionalities such as requesting permissions, initializing Firebase messaging,
+
+// handling notification messages, and showing local notifications.
 class NotificationService {
+  // Instance of FlutterLocalNotificationsPlugin for handling local notifications
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  // Request permission for receiving notifications
   void requestNotificationPermission() async {
     NotificationSettings settings =
         await FirebaseMessaging.instance.requestPermission(
@@ -20,6 +25,7 @@ class NotificationService {
       sound: true,
     );
 
+    // Check if the user granted permission
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       if (kDebugMode) {
         print('user granted permission');
@@ -36,6 +42,7 @@ class NotificationService {
     }
   }
 
+  // Initialize Firebase messaging and subscribe to a topic
   void firebaseInit() {
     FirebaseMessaging.instance.subscribeToTopic("Highscore");
 
@@ -61,6 +68,7 @@ class NotificationService {
     });
   }
 
+  // Initialize local notifications
   void _initLocalNotifications(RemoteMessage message) async {
     var androidInitializationSettings =
         const AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -71,11 +79,12 @@ class NotificationService {
 
     await _flutterLocalNotificationsPlugin.initialize(initializationSetting,
         onDidReceiveNotificationResponse: (payload) {
-      // handle interaction when app is active for android
+      // Handle interaction when app is active for android
       _handleMessage(payload, message);
     });
   }
 
+  // Configure foreground notification presentation options for iOS
   Future _notificationMessage() async {
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
@@ -85,7 +94,7 @@ class NotificationService {
     );
   }
 
-  // function to show visible notification when app is active
+  // Show visible notification when app is active
   Future<void> _showNotification(RemoteMessage message) async {
     AndroidNotificationChannel channel = AndroidNotificationChannel(
       message.notification!.android!.channelId.toString(),
@@ -131,6 +140,7 @@ class NotificationService {
     });
   }
 
+  // Handle message when notification is tapped
   void _handleMessage(NotificationResponse payload, RemoteMessage message) {
     if (kDebugMode) {
       print(
