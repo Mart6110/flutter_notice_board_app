@@ -92,7 +92,6 @@ class CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   CameraController? _controller;
   bool _isCameraInitialized = false;
   late final List<CameraDescription> _cameras;
-  bool _isRecording = false;
   List<String> _base64ImageList = [];
 
   @override
@@ -154,13 +153,11 @@ class CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     final CameraController? cameraController = _controller;
     try {
       setState(() {
-        _isRecording = true;
       });
       await cameraController?.startVideoRecording();
       await Future.delayed(const Duration(seconds: 5));
       final video = await cameraController?.stopVideoRecording();
       setState(() {
-        _isRecording = false;
       });
       return video;
     } on CameraException catch (e) {
@@ -196,24 +193,23 @@ class CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     if (_isCameraInitialized) {
       return Scaffold(
-        body: Column(
+        body: Stack(
           children: [
             CameraPreview(_controller!),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (!_isRecording)
-                  ElevatedButton(
-                    onPressed: () => _onTakePhotoPressed(context),
-                    style: ElevatedButton.styleFrom(
-                        shape: const CircleBorder(),
-                        backgroundColor: Colors.white),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.black,
-                    ),
-                  ),
-              ],
+            Positioned(
+              bottom: 20.0,
+              left: MediaQuery.of(context).size.width / 2 - 50,
+              child: ElevatedButton(
+                onPressed: () => _onTakePhotoPressed(context),
+                style: ElevatedButton.styleFrom(
+                  shape: const CircleBorder(),
+                  backgroundColor: Colors.white,
+                ),
+                child: const Icon(
+                  Icons.camera_alt,
+                  color: Colors.black,
+                ),
+              ),
             ),
           ],
         ),
