@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "386927622635",
+    "project_id": "noticeboardapp-c42f2",
+    "storage_bucket": "noticeboardapp-c42f2.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:386927622635:android:467809cd780184ea1401ae",
+        "android_client_info": {
+          "package_name": "com.example.flutter_notice_board_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgAzLKR6zwErMERp3XOMfZ45tNHrrGRds"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
