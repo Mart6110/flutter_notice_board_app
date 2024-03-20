@@ -52,7 +52,7 @@ class _NoticeBoardScreenState extends State<NoticeBoardScreen> {
               },
               onAcceptWithDetails: (DragTargetDetails<String> details) {
                 setState(() {
-                  _state.addImages([details.data!]); // Add dropped images
+                  _state.addImages([details.data]); // Add dropped images
                 });
               },
             ),

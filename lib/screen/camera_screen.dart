@@ -8,7 +8,7 @@ import 'package:flutter_notice_board_app/screen/preview_screen.dart';
 
 // CameraScreen widget manages the camera functionality
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({Key? key}) : super(key: key);
+  const CameraScreen({super.key});
 
   @override
   CameraScreenState createState() => CameraScreenState();
@@ -24,14 +24,14 @@ class CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance!.addObserver(this);
+    WidgetsBinding.instance.addObserver(this);
     initCamera();
   }
 
   @override
   void dispose() {
     _controller?.dispose(); // Dispose camera controller
-    WidgetsBinding.instance!.removeObserver(this);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
